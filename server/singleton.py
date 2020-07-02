@@ -9,6 +9,6 @@ class Singleton(type):
 
     def __call__(self, *args, **kwargs):
         if not self._INSTANCE:
-            self._INSTANCE = super().__call__()
+            self._INSTANCE = super().__call__(*args, **kwargs)
 
         return self._INSTANCE
