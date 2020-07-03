@@ -80,6 +80,7 @@ def render_win(win):
 
             win.addstr(15, 15, str(data))
 
+
 if __name__ == '__main__':
     print('Запуск сервера')
     multiprocessing.Process(target=server.start_serv).start()
