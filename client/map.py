@@ -9,7 +9,6 @@ import uuid
 import random
 
 from player import Player
-from functools import lru_cache
 
 class Map:
     def __init__(self, width: int, height: int, max_players: int):
