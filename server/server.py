@@ -14,41 +14,6 @@ from singleton import Singleton
 
 STEPS_QUEUE = {}
 
-class Client(threading.Thread):
-    def __init__(self, ip, port, con):
-        super().__init__()
-        self.con = con
-        self.ip = ip
-        self.port = port
-        self.login = None
-        self.uuid = None
-        self.ex_count = 0
-
-
-    def run(self):
-        try:
-            while True:
-                data = self.con.recv(1024)
-                if not data:
-                    break
-
-                data = data.decode()
-
-                if not self.login:
-                    self.login = data
-                else:
-                    STEPS_QUEUE[self.uuid] = int(data)
-        finally:
-            self.con.close()
-        pass
-
-
-class Server(metaclass=Singleton):
-    def __init__(self, address: str, port: int):
-        """
-            Инициализация класса сервера
-        """
-        # список всех текущих подключений
         self.connections = {}
         self.socket = None
         self.port = port
