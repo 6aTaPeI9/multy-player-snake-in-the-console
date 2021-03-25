@@ -5,43 +5,66 @@
 
 from collections import deque
 
+# Максимальная длина комбинации ходов
+MAX_STEPS_QUEUE = 2
+
+
 class Player:
-    def __init__(self, sock):
+    def __init__(self, sock, name: str = None):
         """
             Инициализация нового игрока
         """
         # ник игрока
-        self._name = None
+        self._name = name
         # сокет по которому подключен игрок
-        self.sourc_sock = sock
+        self.source_sock = sock
         # Очередь ходов игрока.
         # Она обеспечивает возможность очень быстро сделать два хода,
         # например для резкого разворота.
-        self.steps_queue = deque
+        self.steps_queue = deque(maxlen=MAX_STEPS_QUEUE)
 
-        return
+        self.last_step = None
 
 
-    def fileno(self):
+    def fileno(self) -> int:
         """
             Получение файлового дескриптора сокета к
             которому подключен игрок
         """
-        return self.sourc_sock.fileno()
+        return self.source_sock.fileno()
 
 
-    def name(self):
+    def name(self) -> str:
         """
             Получение имени игрока
         """
-
         if not self._name:
             return 'Player'
 
         return self._name
 
 
-    def check_steps(self):
+    def check_steps(self) -> None:
         """
             Чтение нажатых клавиш
         """
+        print('check_steps')
+        step = self.source_sock.recv(1024)
+
+        if not step:
+            return
+
+        self.steps_queue.append(step)
+
+
+    def get_step(self):
+        """
+            Получение текущего хода игрока
+        """
+        if self.steps_queue:
+            step = self.steps_queue.popleft()
+            self.last_step = step
+
+            return step
+
+        return self.last_step

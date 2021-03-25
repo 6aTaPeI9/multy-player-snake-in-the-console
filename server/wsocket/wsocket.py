@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     Модуль содержит обертку над стандартным сокетом с
-    частичной реализацией протокола websocket 13 версии
+    частичной реализацией протокола websocket 13 версии.
 """
 
 import socket
@@ -11,7 +11,6 @@ class ConnStatus:
     """
         Статусы соединения
     """
-
     # Статус ожидания рукопожатия
     CONNECTING = 0
 
@@ -36,12 +35,12 @@ class WSocket(socket.socket):
         # Устанавливаем соединение в статус установки соединения.
         self.status = ConnStatus.CONNECTING
 
-        #
-        self.next_ping = 
+        # 
+        self.next_ping = None
 
         #
-        self.ping_status = 
-
+        self.ping_status = None
+        
         return
 
 
@@ -49,8 +48,7 @@ class WSocket(socket.socket):
         """
             Обертка над методом ожидания новых данных
         """
-        dt = super().recv(*args, **kwargs)
-        return dt
+        return super().recv(*args, **kwargs)
 
 
     def accept(self, *args, **kwargs):
@@ -70,5 +68,9 @@ class WSocket(socket.socket):
         """
             Обработчик получения файлового дескриптора сокета.
         """
+        # TODO делаем пинг если пришло время
+        return super().fileno()
 
 
+    def handshake(self):
+        pass
