@@ -4,12 +4,11 @@
     прием и отправку данных
 """
 
-
 import threading
-from wsocket import wsocket
 
-from select import select
 from room import Room
+from select import select
+from wsocket import wsocket
 
 # Длительность опроса потоков чтения и записи в подключенных сокетах
 SELECT_TIMEOUT = 1
@@ -49,10 +48,21 @@ def receive_data(serv_sock: wsocket.WSocket, room: Room):
 
 
 if __name__ == '__main__':
-    serv_sock = wsocket.WSocket(wsocket.socket.AF_INET, wsocket.socket.SOCK_STREAM)
-    serv_sock.setsockopt(wsocket.socket.SOL_SOCKET, wsocket.socket.SO_REUSEADDR, 1)
-    serv_sock.bind(('localhost', 5000))
+    serv_sock = wsocket.WSocket(
+        wsocket.socket.AF_INET,
+        wsocket.socket.SOCK_STREAM
+    )
+
+    serv_sock.setsockopt(
+        wsocket.socket.SOL_SOCKET,
+        wsocket.socket.SO_REUSEADDR,
+        1
+    )
+
+    serv_sock.bind(('10.44.15.64', 2008))
     serv_sock.listen(5)
 
     room = Room()
-    threading.Thread(target=receive_data, args=(serv_sock, room)).start()
+    # threading.Thread(target=receive_data, args=(serv_sock, room)).start()
+    print('Сервер запущен...')
+    receive_data(serv_sock, room)
