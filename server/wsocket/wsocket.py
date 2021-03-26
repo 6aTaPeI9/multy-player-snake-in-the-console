@@ -65,11 +65,12 @@ class WSocket(socket.socket):
 
         # Если установлен статус подключения
         # выполняем рукопожатие
+        print('Статус: ', self.status)
         if self.status == ConnStatus.CONNECTING:
             self.handshake(recv_data)
             return None
-        else:
-            return recv_data
+        print(recv_data)
+        return recv_data
 
 
     def accept(self, *args, **kwargs):
@@ -89,18 +90,30 @@ class WSocket(socket.socket):
         """
             Выплнение рукопожатия
         """
+        # Запрос
         req = HttpRequest()
+
         # Парсим http заголовки
         req.read_request(req_data)
 
+        # Ответ
+        answer = HttpRequest()
         try:
             # Валидируем входящий запрос для выполнения рукопожатия
             s_w_key = handshake.validate_request(req)
         except Exception as ex:
-            req.write_exc(ex)
+            s_w_key = None
+            answer.write_exc(ex)
 
-        answer = HttpRequest()
-        
+        handshake.build_response(answer, s_w_key)
+
+        self.send(answer.to_request().encode())
+
+        if answer.exception is None:
+            print('Успешно')
+            self.status = ConnStatus.CONNECTED
+
+        return True
 
 
     def fileno(self):

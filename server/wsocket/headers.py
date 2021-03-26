@@ -29,11 +29,28 @@ HKEY_RE = re_compile(rb"[-!#$%&\'*+.^_`|~0-9a-zA-Z]+")
 # Шаблон для значения в заголовке
 HVALUE_RE = re_compile(rb"[\x09\x20-\x7e\x80-\xff]*")
 
+B_CRLF = b"\r\n"
+CRLF = "\r\n"
+
 class HttpRequest:
     def __init__(self):
         self.status = 101
         self.headers = {}
         self.exception = None
+
+
+    def to_request(self):
+        """
+            Приводит обьект к формату http
+        """
+        res = f'HTTP/1.1 {self.status} Snake Game{CRLF}'
+
+        for key, val in self.headers.items():
+            res += f'{key}: {val}{CRLF}'
+
+        res += CRLF
+
+        return res
 
 
     def write_exc(self, ex: Exception):
@@ -114,7 +131,7 @@ class HttpRequest:
         if len(line) > MAX_LINE:
             raise InvalidHttpHeader("Too long line.", value=line)
 
-        if not line.endswith(b"\r\n"):
+        if not line.endswith(B_CRLF):
             raise EOFError("Line without CRLF")
 
         return line[:-2]
@@ -131,7 +148,7 @@ class HttpRequest:
         """
             Установка нового заголовка
         """
-        if not self.headers[key]:
+        if not self.headers.get(key):
             self.headers[key] = value
 
         elif isinstance(self.headers[key], list):

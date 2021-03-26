@@ -24,10 +24,13 @@ def build_response(headers: dict, key: str) -> None:
     """
     headers["Upgrade"] = "websocket"
     headers["Connection"] = "Upgrade"
-    headers["Sec-WebSocket-Accept"] = accept(key)
+    headers["Sec-WebSocket-Accept"] = sec_accept(key)
 
 
-def accept(key: str) -> str:
+def sec_accept(key: str) -> str:
+    """
+        Формирование ответного ключа Sec-WebSocket-Accept
+    """
     sha1 = hashlib.sha1((key + GUID).encode()).digest()
     return base64.b64encode(sha1).decode()
 
