@@ -18,16 +18,16 @@ class HeaderNotFound(InvalidHttpHeader):
     """
         Исключения для обязательных заголовков, которые не были переданы
     """
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__('Could not find header - ', *args, **kwargs)
+    def __init__(self, hname:str, *args, **kwargs) -> None:
+        super().__init__(f'Header {hname} - ', *args, **kwargs)
 
 
 class TooMuchHeader(InvalidHttpHeader):
     """
-        Исключения для ошибок в формате http заголовков
+        Исключение для заголовков, кол-во которых выше ожидаемого
     """
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__('Could not find header - ', *args, **kwargs)
+    def __init__(self, hname: str, *args, **kwargs) -> None:
+        super().__init__(f'Too much headers - {hname}', *args, **kwargs)
 
 
 class InvalidHeaderName(InvalidHttpHeader):

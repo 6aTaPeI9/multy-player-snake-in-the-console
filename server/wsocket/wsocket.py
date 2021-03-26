@@ -7,7 +7,8 @@
 import socket
 import time
 
-from . import headers
+from .headers import HttpRequest
+from . import handshake
 
 class ConnStatus:
     """
@@ -61,16 +62,14 @@ class WSocket(socket.socket):
             Обертка над методом ожидания новых данных
         """
         recv_data = super().recv(*args, **kwargs)
-        # print(str(recv_data))
-        # # Если установлен статус подключения
-        # # выполняем рукопожатие
-        # if self.status == ConnStatus.CONNECTING:
-        #     revc_headers = headers.read_request(recv_data)[1]
-        #     for k, v in revc_headers.items():
-        #         print(k, ': ', v)
-        #     return None
-        # else:
-        return recv_data
+
+        # Если установлен статус подключения
+        # выполняем рукопожатие
+        if self.status == ConnStatus.CONNECTING:
+            self.handshake(recv_data)
+            return None
+        else:
+            return recv_data
 
 
     def accept(self, *args, **kwargs):
@@ -86,16 +85,30 @@ class WSocket(socket.socket):
         return sock, addr
 
 
+    def handshake(self, req_data: bytes):
+        """
+            Выплнение рукопожатия
+        """
+        req = HttpRequest()
+        # Парсим http заголовки
+        req.read_request(req_data)
+
+        try:
+            # Валидируем входящий запрос для выполнения рукопожатия
+            s_w_key = handshake.validate_request(req)
+        except Exception as ex:
+            req.write_exc(ex)
+
+        answer = HttpRequest()
+        
+
+
     def fileno(self):
         """
             Обработчик получения файлового дескриптора сокета.
         """
         # TODO делаем пинг если пришло время
         return super().fileno()
-
-
-    def handshake(self):
-        pass
 
 
     def _ping(self):

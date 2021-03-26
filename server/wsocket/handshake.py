@@ -5,15 +5,22 @@
 
 import base64
 import hashlib
+import binascii
 
 from tools import get_as_list
-from .exceptions import InvalidHeaderValue, InvalidHttpHeader
+from .exceptions import (
+    InvalidHeaderValue,
+    InvalidHttpHeader,
+    HeaderNotFound,
+    TooMuchHeader
+)
 
 GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 
 def build_response(headers: dict, key: str) -> None:
     """
+        
     """
     headers["Upgrade"] = "websocket"
     headers["Connection"] = "Upgrade"
@@ -25,54 +32,74 @@ def accept(key: str) -> str:
     return base64.b64encode(sha1).decode()
 
 
-# def validate_request(headers: dict) -> str:
-#     """
-#         Валидация входящего запроса
-#     """
+def get_req_header(header: dict, key: str):
+    """
+        Получение обязательного заголовка
+    """
+    hdr = get_as_list(header, key)
 
-#     # Валидируем заголовок Connection.
-#     # Их может быть больше одного, но все они
-#     # должны быть равны строке <upgrade>
-#     for value in get_as_list(headers, 'Connection'):
-#         if value.lower() == "upgrade":
-#             continue
+    if not hdr:
+        raise HeaderNotFound(key)
 
-#         raise InvalidHeaderValue(name='Connection', value=value)
+    return hdr
 
-#     upgrade = get_as_list(headers, 'Upgrade')
 
-#     if len(upgrade) != 1:
-#         raise InvalidHttpHeader('Too many Upgrade headers')
+def validate_request(headers: dict) -> str:
+    """
+        Валидация входящего запроса
+    """
 
-#     if upgrade[0].lower() != "websocket":
-#         raise InvalidHeaderValue(name='Upgrade', value=upgrade[0])
+    # Валидируем заголовок Connection.
+    # Их может быть больше одного, но все они
+    # должны быть равны строке <upgrade>
 
-#     try:
-#         s_w_key = headers["Sec-WebSocket-Key"]
-#     except KeyError:
-#         raise InvalidHeader("Sec-WebSocket-Key")
-#     except MultipleValuesError:
-#         raise InvalidHeader(
-#             "Sec-WebSocket-Key", "more than one Sec-WebSocket-Key header found"
-#         )
+    connection = get_req_header(headers, 'Connection')
 
-#     try:
-#         raw_key = base64.b64decode(s_w_key.encode(), validate=True)
-#     except binascii.Error:
-#         raise InvalidHeaderValue("Sec-WebSocket-Key", s_w_key)
-#     if len(raw_key) != 16:
-#         raise InvalidHeaderValue("Sec-WebSocket-Key", s_w_key)
+    for value in connection:
+        if value.lower() == "upgrade":
+            continue
 
-#     try:
-#         s_w_version = headers["Sec-WebSocket-Version"]
-#     except KeyError:
-#         raise InvalidHeader("Sec-WebSocket-Version")
-#     except MultipleValuesError:
-#         raise InvalidHeader(
-#             "Sec-WebSocket-Version", "more than one Sec-WebSocket-Version header found"
-#         )
+        raise InvalidHeaderValue(name='Connection', value=value)
 
-#     if s_w_version != "13":
-#         raise InvalidHeaderValue("Sec-WebSocket-Version", s_w_version)
+    # Валидация заголовка Upgrade
+    upgrade = get_req_header(headers, 'Upgrade')
 
-#     return s_w_key
+    if len(upgrade) != 1:
+        raise TooMuchHeader('Upgrade')
+
+    if upgrade[0].lower() != "websocket":
+        raise InvalidHeaderValue(name='Upgrade', value=upgrade[0])
+
+    # Валидация заголовка Sec-WebSocket-Key
+    s_w_key = get_req_header(headers, 'Sec-WebSocket-Key')
+
+    if len(s_w_key) != 1:
+        raise TooMuchHeader('Sec-WebSocket-Key')
+
+    s_w_key = s_w_key[0]
+
+    try:
+        raw_key = base64.b64decode(s_w_key.encode(), validate=True)
+    except binascii.Error:
+        raise InvalidHeaderValue('Sec-WebSocket-Key', s_w_key)
+
+    if len(raw_key) != 16:
+        raise InvalidHeaderValue('Sec-WebSocket-Key', s_w_key)
+
+    # Валидация заголовка Sec-WebSocket-Version
+    s_w_version = get_req_header(headers, 'Sec-WebSocket-Version')
+
+    if not s_w_version:
+        raise HeaderNotFound('Sec-WebSocket-Version')
+
+    if len(s_w_version) != 1:
+        raise TooMuchHeader('Sec-WebSocket-Version')
+
+    if s_w_version[0] != "13":
+        raise InvalidHeaderValue('Sec-WebSocket-Version', s_w_version)
+
+    # Валидация заголовка Host
+    if not get_req_header(headers, 'Host'):
+        HeaderNotFound('Host')
+
+    return s_w_key

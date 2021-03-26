@@ -59,7 +59,7 @@ if __name__ == '__main__':
         1
     )
 
-    serv_sock.bind(('10.44.15.64', 2008))
+    serv_sock.bind(('10.44.15.64', 5000))
     serv_sock.listen(5)
 
     room = Room()
