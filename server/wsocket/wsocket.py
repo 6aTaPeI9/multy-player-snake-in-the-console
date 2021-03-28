@@ -8,7 +8,7 @@ import socket
 import time
 
 from .headers import HttpRequest
-from . import handshake
+from . import handshake, framing
 
 class ConnStatus:
     """
@@ -65,11 +65,13 @@ class WSocket(socket.socket):
 
         # Если установлен статус подключения
         # выполняем рукопожатие
-        print('Статус: ', self.status)
+
         if self.status == ConnStatus.CONNECTING:
             self.handshake(recv_data)
             return None
-        print(recv_data)
+        else:
+            recv_data = framing.read_frame(recv_data)
+
         return recv_data
 
 
@@ -95,6 +97,9 @@ class WSocket(socket.socket):
 
         # Парсим http заголовки
         req.read_request(req_data)
+
+        for k, v in req.headers.items():
+            print(k, ': ', v)
 
         # Ответ
         answer = HttpRequest()
