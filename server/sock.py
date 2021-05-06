@@ -41,10 +41,9 @@ def receive_data(serv_sock: wsocket.WSocket, room: Room):
                 sock.check_steps()
 
         for player in room.players:
-            print(f'Игрок: {player.name()} нажал: {player.get_step()}')
+            data = player.get_step()
+            print(f'Игрок: {player.name()} нажал: {data}')
 
-
-        # for player in send_sock:
 
 
 if __name__ == '__main__':

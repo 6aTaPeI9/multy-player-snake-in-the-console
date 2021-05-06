@@ -73,5 +73,16 @@ def read_frame(data: bytes):
     else:
         data = reader[2: 2 + lenght + 1]
 
-    print(data.decode('utf-8'))
-    return data.decode('utf-8')
+    result = {
+        'OpCode': op_code,
+        'Date': data.decode('utf-8')
+    }
+
+    return result
+
+
+def make_frame(body, op_code):
+    """
+        Формирование тела сообщения
+    """
+    pass

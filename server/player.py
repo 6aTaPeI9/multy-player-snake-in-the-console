@@ -48,7 +48,6 @@ class Player:
         """
             Чтение нажатых клавиш
         """
-        print('check_steps')
         step = self.source_sock.recv(1024)
 
         if not step:
@@ -67,4 +66,4 @@ class Player:
 
             return step
 
-        return self.last_step
+        return None
