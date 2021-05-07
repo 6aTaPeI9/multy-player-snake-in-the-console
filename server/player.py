@@ -16,22 +16,13 @@ class Player:
         """
         # ник игрока
         self._name = name
-        # сокет по которому подключен игрок
-        self.source_sock = sock
+
         # Очередь ходов игрока.
         # Она обеспечивает возможность очень быстро сделать два хода,
         # например для резкого разворота.
         self.steps_queue = deque(maxlen=MAX_STEPS_QUEUE)
 
         self.last_step = None
-
-
-    def fileno(self) -> int:
-        """
-            Получение файлового дескриптора сокета к
-            которому подключен игрок
-        """
-        return self.source_sock.fileno()
 
 
     def name(self) -> str:
@@ -44,16 +35,14 @@ class Player:
         return self._name
 
 
-    def check_steps(self) -> None:
+    def key_pressed(self, key) -> None:
         """
-            Чтение нажатых клавиш
+            Обработчик нажатых клавиш
         """
-        step = self.source_sock.recv(1024)
-
-        if not step:
+        if not key:
             return
 
-        self.steps_queue.append(step)
+        self.steps_queue.append(key)
 
 
     def get_step(self):

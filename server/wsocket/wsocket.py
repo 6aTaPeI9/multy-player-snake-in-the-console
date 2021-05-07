@@ -7,43 +7,16 @@
 import socket
 import time
 
-from .headers import HttpRequest
 from . import handshake, framing
-
+from .headers import HttpRequest
+from .const import ConnStatus, PingStatus, SockEvents
 
 # Частота пинга(в секундах)
 PING_FREQ = 5
 
 
-class ConnStatus:
-    """
-        Статусы соединения
-    """
-    # Статус ожидания рукопожатия
-    CONNECTING = 0
-
-    # активное соединение
-    CONNECTED = 1
-
-    # Ожидание чистого отключения
-    CLOSING = 2
-
-    # сокет отключен
-    CLOSED = 3
-
-
-class PingStatus:
-    """
-        Статусы пинга
-    """
-    # Пинг отрпавлен
-    SENDED = 0
-
-    # Понг получен
-    RECIEVED = 1
-
 class WSocket(socket.socket):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, ping: bool = True, **kwargs):
         """
             Инциализация сокета с частичной поддержкой
             протокола WebSocket v13
@@ -62,8 +35,10 @@ class WSocket(socket.socket):
 
         # Статус пинга
         self.ping_status = PingStatus.RECIEVED
+        self.do_ping = ping
 
-        return
+        # Обработчики для событий
+        self._handlers = {}
 
 
     def recv(self, *args, **kwargs):
@@ -78,28 +53,16 @@ class WSocket(socket.socket):
         if self.status == ConnStatus.CONNECTING:
             self.handshake(recv_data)
             return None
-        else:
+        elif self.status == ConnStatus.CONNECTED:
             data = framing.read_frame(recv_data)
 
-            op_code = data.get('OpCode')
-            # Получили пинг, отвечаем понгом
+            op_code = int(data.get('OpCode'), 16)
+
             if op_code in (framing.OpCodes.OP_PING, framing.OpCodes.OP_PONG):
-                return self._pong(data.get('Data'))
+                self.ping_status = PingStatus.RECIEVED
+                return None
 
         return recv_data
-
-
-    def accept(self, *args, **kwargs):
-        """
-            Обертка над методом ожидания новых подключений
-        """
-        fd, addr = self._accept()
-        sock = WSocket(self.family, self.type, self.proto, fileno=fd)
-
-        if socket.getdefaulttimeout() is None and self.gettimeout():
-            sock.setblocking(True)
-
-        return sock, addr
 
 
     def handshake(self, req_data: bytes):
@@ -129,7 +92,7 @@ class WSocket(socket.socket):
         self.send(answer.to_request().encode())
 
         if answer.exception is None:
-            print('Успешно')
+            # print('Успешно')
             self.status = ConnStatus.CONNECTED
 
         return True
@@ -139,8 +102,9 @@ class WSocket(socket.socket):
         """
             Обработчик получения файлового дескриптора сокета.
         """
+        if self.do_ping:
+            self.ping()
 
-        # TODO делаем пинг если пришло время
         return super().fileno()
 
 
@@ -152,20 +116,54 @@ class WSocket(socket.socket):
         # Проверяем актуальность последнего пинга
         if (time.time() - self.ping_time) > PING_FREQ:
             if self.ping_status == PingStatus.SENDED:
-                print('Закрываем соединение')
-                # self.close()
+                # print('ЗАКРЫВАЕМ!!!')
+                self._close()
             else:
-                self._ping()
-
-        return
-
-
-    def _ping(self):
-        """
-            Выполняем ping
-        """
-        pass
+                print('Отправили ping')
+                self.send(framing.make_frame(framing.OpCodes.OP_PING, 'ping'))
+                self.ping_status = PingStatus.SENDED
+                self.ping_time = time.time()
 
 
     def _close(self):
-        pass
+        """
+            Закрытие соединения
+        """
+        close_fram = framing.make_frame(framing.OpCodes.OP_CLOSE, 'close')
+        self.send(close_fram)
+        self.status = ConnStatus.CLOSED
+
+        if self.close_event:
+            self._execute_handler(SockEvents.CONN_CLOSE)
+
+        self.close()
+
+
+    def on(self, event: str, handler):
+        """
+            Добавление обработчиков событий
+        """
+        if self._handlers.get(event) is not None:
+            raise ValueError(f'Обработчик с именем {event} уже добавлен.')
+
+        self._handlers[event] = handler
+
+
+    def on_close(self, handler):
+        """
+            Оброботчик закрытия соединения
+        """
+        self.on(SockEvents.CONN_CLOSE, handler)
+
+
+    def _execute_handler(self, event: str):
+        """
+            Выполнение обработчика, если он есть.
+        """
+
+        handl = self._handlers.get(event)
+
+        if not handl:
+            return
+
+        handl.call()

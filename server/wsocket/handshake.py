@@ -7,7 +7,6 @@ import base64
 import hashlib
 import binascii
 
-from tools import get_as_list
 from .exceptions import (
     InvalidHeaderValue,
     InvalidHttpHeader,
@@ -106,3 +105,15 @@ def validate_request(headers: dict) -> str:
         HeaderNotFound('Host')
 
     return s_w_key
+
+
+def get_as_list(data: dict, key: str):
+    """
+        Получение значения из словаря в списке
+    """
+    res = data.get(key)
+
+    if not isinstance(res, list):
+        res = [res]
+
+    return res
