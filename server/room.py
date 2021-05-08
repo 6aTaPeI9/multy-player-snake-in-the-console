@@ -16,7 +16,7 @@ class Room:
         self.players_count = 0
 
 
-    def del_player(self, player):
+    def del_player(self, player: Player):
         """
             Удаление игрока
         """
@@ -24,13 +24,16 @@ class Room:
         self.players.remove(player)
 
 
-    def add_player(self, player_sock):
+    def add_player(self, player: Player):
         """
             Добавление нового игрока в комнату
         """
+        print('Игрока добавили')
         self.players_count += 1
-
-        player = Player(player_sock, f'Player{self.players_count}')
-        player_sock.close_event = [self.del_player, (player,)]
-
         self.players.append(player)
+        player._name = f'Player{self.players_count}'
+
+
+    def broadcast(self):
+        for player in self.players:
+            print(f'Игрок {player.name}')

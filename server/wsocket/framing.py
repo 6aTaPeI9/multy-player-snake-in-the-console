@@ -49,8 +49,11 @@ def read_frame(data: bytes):
     """
         Метод парсит входящий фрейм и отдает контент
     """
-    reader = memoryview(data)
 
+    if not data:
+        return None
+
+    reader = memoryview(data)
     # Читаем первые два байта сообщения
     byte1, byte2 = reader[0:2]
 
@@ -77,10 +80,14 @@ def read_frame(data: bytes):
     else:
         data = reader[2: 2 + lenght + 1].tobytes()
 
+    if op_code != OpCodes.OP_CLOSE:
+        data = data.decode()
+
     result = {
         'OpCode': hex(op_code),
-        'Data': data.decode()
+        'Data': data
     }
+    
 
     return result
 

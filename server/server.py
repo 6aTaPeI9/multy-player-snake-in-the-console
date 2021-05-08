@@ -5,8 +5,8 @@
 
 from room import Room
 from player import Player
-
 from select import select
+from handler import Handler
 from socket import socket, getdefaulttimeout
 from wsocket.wsocket import WSocket, ConnStatus
 
@@ -32,13 +32,15 @@ class Server(socket):
         """
             Обертка над методом ожидания новых подключений
         """
-        fd, addr = self._accept()
+        fd, _ = self._accept()
         sock = WSocket(self.family, self.type, self.proto, fileno=fd)
 
         if getdefaulttimeout() is None and self.gettimeout():
             sock.setblocking(True)
 
-        self.connections.append(sock, addr)
+        self.connections.append(sock)
+
+        return sock
 
 
     def _clear_disconected(self):
@@ -62,23 +64,29 @@ class Server(socket):
         """
             Запуск сервера
         """
+        rooms = [Room()]
         while True:
             # Удаляем закрытые соединения
             self._clear_disconected()
-
-            receive_sock, _, _ = select(self.connect, [], [], SELECT_TIMEOUT)
+            print('Кол-во игроков: ', len(rooms[0].players))
+            receive_sock, _, _ = select(self.connections, [], [], SELECT_TIMEOUT)
 
             for sock in receive_sock:
                 # Если поток чтения в серверном сокете не пуст
                 # принимаем новое подключение
-                if isinstance(Server):
-                    sock.accept()
+                if isinstance(sock, Server):
+                    new_conn = sock.accept()
+                    register_player_handlers(new_conn, rooms[0], Player())
                 else:
-                    sock.recv()
+                    sock.recv(1024)
 
 
 def register_player_handlers(sock, room: Room, player: Player):
     """
         Установка стандартных обработчиков для каждого игрока
     """
-    sock.
+    sock.on('key_pressed', Handler(player.key_pressed))
+    sock.on_close(Handler(room.del_player, player=player))
+    sock.on_connect(Handler(room.add_player, player=player))
+
+    return

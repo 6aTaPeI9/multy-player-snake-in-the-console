@@ -10,7 +10,7 @@ MAX_STEPS_QUEUE = 2
 
 
 class Player:
-    def __init__(self, sock, name: str = None):
+    def __init__(self, name: str = None):
         """
             Инициализация нового игрока
         """
@@ -56,3 +56,4 @@ class Player:
             return step
 
         return None
+

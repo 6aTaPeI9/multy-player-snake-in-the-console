@@ -9,6 +9,8 @@ class SockEvents:
     """
     CONN_CLOSE = 'conn_close'
 
+    CONNECTED = 'connected'
+
 
 class ConnStatus:
     """

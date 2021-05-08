@@ -6,6 +6,7 @@
 
 import socket
 import time
+import json
 
 from . import handshake, framing
 from .headers import HttpRequest
@@ -49,20 +50,28 @@ class WSocket(socket.socket):
 
         # Если установлен статус подключения
         # выполняем рукопожатие
-
         if self.status == ConnStatus.CONNECTING:
             self.handshake(recv_data)
-            return None
         elif self.status == ConnStatus.CONNECTED:
             data = framing.read_frame(recv_data)
+
+            if not data:
+                return
 
             op_code = int(data.get('OpCode'), 16)
 
             if op_code in (framing.OpCodes.OP_PING, framing.OpCodes.OP_PONG):
                 self.ping_status = PingStatus.RECIEVED
-                return None
+                return
 
-        return recv_data
+            if op_code == framing.OpCodes.OP_CLOSE:
+                self._close(from_client=True)
+                return
+
+            data = json.dumps(data)
+            self._execute_handler('key_pressed', data)
+
+        return 
 
 
     def handshake(self, req_data: bytes):
@@ -92,8 +101,8 @@ class WSocket(socket.socket):
         self.send(answer.to_request().encode())
 
         if answer.exception is None:
-            # print('Успешно')
             self.status = ConnStatus.CONNECTED
+            self._execute_handler(SockEvents.CONNECTED)
 
         return True
 
@@ -116,7 +125,6 @@ class WSocket(socket.socket):
         # Проверяем актуальность последнего пинга
         if (time.time() - self.ping_time) > PING_FREQ:
             if self.ping_status == PingStatus.SENDED:
-                # print('ЗАКРЫВАЕМ!!!')
                 self._close()
             else:
                 print('Отправили ping')
@@ -125,17 +133,16 @@ class WSocket(socket.socket):
                 self.ping_time = time.time()
 
 
-    def _close(self):
+    def _close(self, from_client: bool = False):
         """
             Закрытие соединения
         """
-        close_fram = framing.make_frame(framing.OpCodes.OP_CLOSE, 'close')
-        self.send(close_fram)
+        if not from_client:
+            close_fram = framing.make_frame(framing.OpCodes.OP_CLOSE, 'close')
+            self.send(close_fram)
+        
         self.status = ConnStatus.CLOSED
-
-        if self.close_event:
-            self._execute_handler(SockEvents.CONN_CLOSE)
-
+        self._execute_handler(SockEvents.CONN_CLOSE)
         self.close()
 
 
@@ -156,7 +163,15 @@ class WSocket(socket.socket):
         self.on(SockEvents.CONN_CLOSE, handler)
 
 
-    def _execute_handler(self, event: str):
+    def on_connect(self, handler):
+        """
+            Оброботчик нового подключения.
+            Вызывает после выполнения рукопожатия.
+        """
+        self.on(SockEvents.CONNECTED, handler)
+
+
+    def _execute_handler(self, event: str, data=None):
         """
             Выполнение обработчика, если он есть.
         """
@@ -165,5 +180,5 @@ class WSocket(socket.socket):
 
         if not handl:
             return
-
-        handl.call()
+        print('Вызов обработчика: ', handl.object, '. С параметрами: ', dict(**handl.kwargs), ' | DATA: ', data)
+        handl.call(data)
