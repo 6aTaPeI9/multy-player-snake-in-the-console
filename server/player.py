@@ -35,6 +35,17 @@ class Player:
         return self._name
 
 
+    def set_name(self, name):
+        """
+            Обработчик события сокета.
+            Установка нового имени игрока.
+        """
+        if not name:
+            return
+
+        self._name = name
+
+
     def key_pressed(self, key) -> None:
         """
             Обработчик нажатых клавиш

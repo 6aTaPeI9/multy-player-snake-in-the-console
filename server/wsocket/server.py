@@ -3,12 +3,13 @@
     Класс сервера
 """
 
-from room import Room
-from player import Player
+import json
+
+
 from select import select
 from handler import Handler
 from socket import socket, getdefaulttimeout
-from wsocket.wsocket import WSocket, ConnStatus
+from .wsocket import WSocket, ConnStatus
 
 
 SELECT_TIMEOUT = 1
@@ -24,6 +25,9 @@ class Server(socket):
         # чтобы он сам себя опрашивал на входящие подключения
         self.connections = [self]
         self.status = ConnStatus.CONNECTED
+
+        # Обработчики для событий
+        self._handlers = {}
 
         super().__init__(*args, **kwargs)
 
@@ -60,15 +64,32 @@ class Server(socket):
         return
 
 
+    def _execute_handler(self, event: str):
+        """
+            Выполнение обработчика, если он есть.
+        """
+
+        handl = self._handlers.get(event)
+
+        if not handl:
+            return
+
+        # print('Вызов обработчика(ИзСервера): ', handl.object, '. С параметрами: ', dict(**handl.kwargs), ' | DATA: ', data)
+
+        handl.call()
+
+
+    def on_connection(self):
+        pass
+
+
     def forever(self):
         """
             Запуск сервера
         """
-        rooms = [Room()]
         while True:
             # Удаляем закрытые соединения
             self._clear_disconected()
-            print('Кол-во игроков: ', len(rooms[0].players))
             receive_sock, _, _ = select(self.connections, [], [], SELECT_TIMEOUT)
 
             for sock in receive_sock:
@@ -76,17 +97,5 @@ class Server(socket):
                 # принимаем новое подключение
                 if isinstance(sock, Server):
                     new_conn = sock.accept()
-                    register_player_handlers(new_conn, rooms[0], Player())
                 else:
-                    sock.recv(1024)
-
-
-def register_player_handlers(sock, room: Room, player: Player):
-    """
-        Установка стандартных обработчиков для каждого игрока
-    """
-    sock.on('key_pressed', Handler(player.key_pressed))
-    sock.on_close(Handler(room.del_player, player=player))
-    sock.on_connect(Handler(room.add_player, player=player))
-
-    return
+                    data = sock.recv(1024)
