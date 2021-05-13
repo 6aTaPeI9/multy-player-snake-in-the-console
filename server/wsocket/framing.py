@@ -61,12 +61,10 @@ class Frame:
         """
         # Если контент уже есть, парсить ничего не нужно
         if self._data:
-            print('WTF')
             return self._data
 
         # Если фрема нет, отдаем None
         if not self._frame:
-            print('WTF2')
             return None
 
         reader = BytesIO(self._frame)

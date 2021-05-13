@@ -46,14 +46,17 @@ class Player:
         self._name = name
 
 
-    def key_pressed(self, key) -> None:
+    def key_pressed(self, event) -> None:
         """
             Обработчик нажатых клавиш
         """
+        key = event.get('data')
+        print('Сработало событие KeyPressed', key)
+
         if not key:
             return
 
-        self.steps_queue.append(key)
+        self.last_step = key
 
 
     def get_step(self):

@@ -4,6 +4,7 @@
     частичной реализацией протокола websocket 13 версии.
 """
 
+import json
 import socket
 import time
 
@@ -69,8 +70,12 @@ class WSocket(socket.socket):
             if op_code == OpCodes.OP_CLOSE:
                 self._close(from_client=True)
                 return
-
-        return row_data.data()
+            print('Пришли данные', row_data.data())
+            try:
+                data = json.loads(row_data.data().get('Data'))
+                self._execute_handler(data[0], data=data[1])
+            except Exception as ex:
+                print(ex)
 
 
     def handshake(self, req_data: bytes):
@@ -97,10 +102,11 @@ class WSocket(socket.socket):
 
         handshake.build_response(answer, s_w_key)
 
-        self.send(answer.to_request().encode())
+        super().send(answer.to_request().encode())
 
         if answer.exception is None:
             self.status = ConnStatus.CONNECTED
+            # Выполняем обработчик нового подключения
             self._execute_handler(SockEvents.CONNECTED)
 
         return True
@@ -126,12 +132,19 @@ class WSocket(socket.socket):
             if self.ping_status == PingStatus.SENDED:
                 self._close()
             else:
-                data_frame = Frame(data='ping')
-                data_frame.set_op_code(OpCodes.OP_PING)
-                self.send(data_frame.frame())
+                self.send('ping', OpCodes.OP_PING)
                 self.ping_status = PingStatus.SENDED
                 self.ping_time = time.time()
                 print('PING')
+
+
+    def send(self, data, op_code: OpCodes.OP_TEXT):
+        """
+            Отправка данных
+        """
+        frame = Frame(data=data)
+        frame.set_op_code(op_code)
+        super().send(frame.frame())
 
 
     def _close(self, from_client: bool = False):
@@ -139,10 +152,8 @@ class WSocket(socket.socket):
             Закрытие соединения
         """
         if not from_client:
-            close_frame = Frame(data='close')
-            close_frame.set_op_code(OpCodes.OP_CLOSE)
-            self.send(close_frame.frame())
-        
+            self.send('close', OpCodes.OP_CLOSE)
+
         self.status = ConnStatus.CLOSED
         self._execute_handler(SockEvents.CONN_CLOSE)
         self.close()
@@ -150,7 +161,7 @@ class WSocket(socket.socket):
 
     def on(self, event: str, handler):
         """
-            Добавление обработчиков событий
+            Добавление обработчиков входящих данных
         """
         if self._handlers.get(event) is not None:
             raise ValueError(f'Обработчик с именем {event} уже добавлен.')
@@ -173,7 +184,7 @@ class WSocket(socket.socket):
         self.on(SockEvents.CONNECTED, handler)
 
 
-    def _execute_handler(self, event: str):
+    def _execute_handler(self, event: str, **kwargs):
         """
             Выполнение обработчика, если он есть.
         """
@@ -181,6 +192,7 @@ class WSocket(socket.socket):
         handl = self._handlers.get(event)
 
         if not handl:
+            print(f'Не найден обработчик для события {event}')
             return
-        print('Вызов обработчика: ', handl.object, '. С параметрами: ', dict(**handl.kwargs), ' | DATA: ', data)
-        handl.call()
+
+        handl.call({'socket': self, **kwargs})

@@ -3,16 +3,15 @@
     Класс сервера
 """
 
+import time
 import json
 
 
 from select import select
-from handler import Handler
 from socket import socket, getdefaulttimeout
+from .handler import Handler
 from .wsocket import WSocket, ConnStatus
 
-
-SELECT_TIMEOUT = 1
 
 class Server(socket):
 
@@ -29,6 +28,11 @@ class Server(socket):
         # Обработчики для событий
         self._handlers = {}
 
+        # Список периодически выполняемых задач
+        self._eventually_tasks = []
+
+        self._min_select_timeout = None
+
         super().__init__(*args, **kwargs)
 
 
@@ -44,7 +48,24 @@ class Server(socket):
 
         self.connections.append(sock)
 
+        if self._handlers.get('NEW_CONNECTION'):
+            sock.on_connect(self._handlers.get('NEW_CONNECTION'))
+
         return sock
+
+
+    def add_task(self, handler: Handler, timeout: int):
+        """
+            Добавление периодически выполняемой задачи
+        """
+        self._eventually_tasks.append([handler, timeout // 1000, time.time()])
+
+
+    def on_accept(self, handler: Handler):
+        """
+            Событие при получении нового подключения
+        """
+        self._handlers['NEW_CONNECTION'] = handler
 
 
     def _clear_disconected(self):
@@ -74,28 +95,45 @@ class Server(socket):
         if not handl:
             return
 
-        # print('Вызов обработчика(ИзСервера): ', handl.object, '. С параметрами: ', dict(**handl.kwargs), ' | DATA: ', data)
+        print('Вызов обработчика(ИзСервера): ', handl.object, '. С параметрами: ', dict(**handl.kwargs))
 
         handl.call()
-
-
-    def on_connection(self):
-        pass
 
 
     def forever(self):
         """
             Запуск сервера
         """
+        next_task = None
+
         while True:
             # Удаляем закрытые соединения
             self._clear_disconected()
-            receive_sock, _, _ = select(self.connections, [], [], SELECT_TIMEOUT)
+            receive_sock, _, _ = select(self.connections, [], [], next_task)
 
             for sock in receive_sock:
                 # Если поток чтения в серверном сокете не пуст
                 # принимаем новое подключение
                 if isinstance(sock, Server):
-                    new_conn = sock.accept()
+                    sock.accept()
                 else:
-                    data = sock.recv(1024)
+                    sock.recv(1024)
+
+            for task in self._eventually_tasks:
+                if (task[2] + task[1]) > time.time():
+                    task[0].call()
+                    task[2] = time.time()
+
+                if next_task:
+                    next_task = task[1] if next_task > task[1] else next_task
+                else:
+                    next_task = task[1]
+
+
+    def broadcast(self, data: bytes):
+        """
+            Массовая рассылка данных
+        """
+        for sock in self.connections:
+            if not isinstance(sock, Server):
+                sock.send(data)
