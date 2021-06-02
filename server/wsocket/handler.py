@@ -19,17 +19,17 @@ class Handler:
         self.after_handler = None
 
 
-    def call(self, event_obj):
+    def call(self):
         """
             Вызов обработчика
         """
         if self.before_handler:
-            self.before_handler.call(event_obj)
+            self.before_handler.call()
 
-        self.func(event_obj, **self.kwargs)
+        self.func(**self.kwargs)
 
         if self.after_handler:
-            self.after_handler.call(event_obj)
+            self.after_handler.call()
 
 
     def sub_handler(self, handler, before: bool):

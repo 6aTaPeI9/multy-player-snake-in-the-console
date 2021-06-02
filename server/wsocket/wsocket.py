@@ -138,10 +138,13 @@ class WSocket(socket.socket):
                 print('PING')
 
 
-    def send(self, data, op_code: OpCodes.OP_TEXT):
+    def send(self, data, op_code: OpCodes = OpCodes.OP_TEXT):
         """
             Отправка данных
         """
+        if not data:
+            raise ValueError('Не передан обязательный параметр data.')
+
         frame = Frame(data=data)
         frame.set_op_code(op_code)
         super().send(frame.frame())
@@ -195,4 +198,5 @@ class WSocket(socket.socket):
             print(f'Не найден обработчик для события {event}')
             return
 
-        handl.call({'socket': self, **kwargs})
+        handl.kwargs['event'] = {'socket': self, **kwargs}
+        handl.call()

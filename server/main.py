@@ -3,9 +3,7 @@
     Инициализация сервера
 """
 
-
 from room import Room
-from player import Player
 from wsocket.server import Server
 from wsocket.handler import Handler
 from socket import AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR

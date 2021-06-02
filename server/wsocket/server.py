@@ -13,6 +13,24 @@ from .handler import Handler
 from .wsocket import WSocket, ConnStatus
 
 
+class Task:
+    def __init__(self, handler: Handler, timeout: int):
+        self._handler = handler
+        # Таймаут в мс
+        self.timeout = timeout
+        self.last_executed = time.time()
+        super().__init__()
+
+
+    def call(self):
+        """
+            Вызов обработчика
+        """
+        if (time.time() - self.last_executed) * 1000 > self.timeout:
+            self._handler.call()
+            # Записываем время последнего выполнения таски
+            self.last_executed = time.time()
+
 class Server(socket):
 
     def __init__(self, *args, **kwargs):
@@ -58,7 +76,8 @@ class Server(socket):
         """
             Добавление периодически выполняемой задачи
         """
-        self._eventually_tasks.append([handler, timeout // 1000, time.time()])
+        handler.kwargs['event'] = self.__event()
+        self._eventually_tasks.append(Task(handler, timeout))
 
 
     def on_accept(self, handler: Handler):
@@ -96,20 +115,46 @@ class Server(socket):
             return
 
         print('Вызов обработчика(ИзСервера): ', handl.object, '. С параметрами: ', dict(**handl.kwargs))
-
+        
+        handl.kwargs['event'] = self.__event()
         handl.call()
+
+
+    def broadcast(self, data: bytes):
+        """
+            Массовая рассылка данных
+        """
+        for sock in self.connections:
+            if not isinstance(sock, Server):
+                sock.send(data)
+
+
+    def __event(self):
+        """
+            Обьект события
+        """
+        return {'Server': self}
 
 
     def forever(self):
         """
             Запуск сервера
         """
-        next_task = None
+        # Фактическое время блокирования при чтении потока ввода
+        # Из фактического времени вычитается время выполнения всех событий
+        # получении и отправки данных, а так же время выполнения всех задач
+        loop_timeout = 100
+
+        # Макс.время блокирования при чтении потока ввода
+        max_timeout = 10000
 
         while True:
             # Удаляем закрытые соединения
             self._clear_disconected()
-            receive_sock, _, _ = select(self.connections, [], [], next_task)
+            receive_sock, _, _ = select(self.connections, [], [], loop_timeout / 1000)
+
+            # Время начала выполнения одной итерации
+            loop_start_time = time.time()
 
             for sock in receive_sock:
                 # Если поток чтения в серверном сокете не пуст
@@ -120,20 +165,12 @@ class Server(socket):
                     sock.recv(1024)
 
             for task in self._eventually_tasks:
-                if (task[2] + task[1]) > time.time():
-                    task[0].call()
-                    task[2] = time.time()
+                task.call()
 
-                if next_task:
-                    next_task = task[1] if next_task > task[1] else next_task
-                else:
-                    next_task = task[1]
-
-
-    def broadcast(self, data: bytes):
-        """
-            Массовая рассылка данных
-        """
-        for sock in self.connections:
-            if not isinstance(sock, Server):
-                sock.send(data)
+                if max_timeout > task.timeout:
+                    max_timeout = task.timeout
+            print('max_timeout: ', max_timeout)
+            loop_timeout = max_timeout - (time.time() - loop_start_time) * 1000
+            print(loop_timeout)
+            if loop_timeout < 0:
+                loop_timeout = 0

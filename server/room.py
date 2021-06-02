@@ -49,6 +49,7 @@ class Room:
         dt = ''
 
         for player in self.players:
-            dt += f'Игрок {player.name()} нажал {self.last_step}'
+            dt += f'Игрок {player.name()} нажал {player.last_step}'
 
-        source.broadcast(dt)
+        if dt:
+            source.broadcast(dt)
