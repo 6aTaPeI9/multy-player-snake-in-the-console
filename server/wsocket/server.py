@@ -76,7 +76,7 @@ class Server(socket):
         """
             Добавление периодически выполняемой задачи
         """
-        handler.kwargs['event'] = self.__event()
+        handler.event.update({'source': self})
         self._eventually_tasks.append(Task(handler, timeout))
 
 
@@ -116,7 +116,7 @@ class Server(socket):
 
         print('Вызов обработчика(ИзСервера): ', handl.object, '. С параметрами: ', dict(**handl.kwargs))
         
-        handl.kwargs['event'] = self.__event()
+        handl.event.update({'source': self})
         handl.call()
 
 
@@ -129,13 +129,6 @@ class Server(socket):
                 sock.send(data)
 
 
-    def __event(self):
-        """
-            Обьект события
-        """
-        return {'Server': self}
-
-
     def forever(self):
         """
             Запуск сервера
@@ -146,7 +139,7 @@ class Server(socket):
         loop_timeout = 100
 
         # Макс.время блокирования при чтении потока ввода
-        max_timeout = 10000
+        max_timeout = 100
 
         while True:
             # Удаляем закрытые соединения
@@ -169,8 +162,8 @@ class Server(socket):
 
                 if max_timeout > task.timeout:
                     max_timeout = task.timeout
-            print('max_timeout: ', max_timeout)
+
             loop_timeout = max_timeout - (time.time() - loop_start_time) * 1000
-            print(loop_timeout)
+
             if loop_timeout < 0:
                 loop_timeout = 0

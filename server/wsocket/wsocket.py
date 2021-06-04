@@ -7,6 +7,7 @@
 import json
 import socket
 import time
+import traceback
 
 from . import handshake
 from .framing import Frame, OpCodes
@@ -70,12 +71,12 @@ class WSocket(socket.socket):
             if op_code == OpCodes.OP_CLOSE:
                 self._close(from_client=True)
                 return
-            print('Пришли данные', row_data.data())
+
             try:
                 data = json.loads(row_data.data().get('Data'))
                 self._execute_handler(data[0], data=data[1])
-            except Exception as ex:
-                print(ex)
+            except Exception:
+                print(traceback.format_exc())
 
 
     def handshake(self, req_data: bytes):
@@ -88,8 +89,8 @@ class WSocket(socket.socket):
         # Парсим http заголовки
         req.read_request(req_data)
 
-        for k, v in req.headers.items():
-            print(k, ': ', v)
+        # for k, v in req.headers.items():
+        #     print(k, ': ', v)
 
         # Ответ
         answer = HttpRequest()
@@ -169,6 +170,8 @@ class WSocket(socket.socket):
         if self._handlers.get(event) is not None:
             raise ValueError(f'Обработчик с именем {event} уже добавлен.')
 
+        handler.event.update({'source': self})
+
         self._handlers[event] = handler
 
 
@@ -198,5 +201,4 @@ class WSocket(socket.socket):
             print(f'Не найден обработчик для события {event}')
             return
 
-        handl.kwargs['event'] = {'socket': self, **kwargs}
-        handl.call()
+        handl.call(**kwargs)

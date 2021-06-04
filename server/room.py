@@ -5,8 +5,10 @@
 """
 
 
+from game_map import Map
 from player import Player
 from wsocket.handler import Handler
+
 
 class Room:
     def __init__(self):
@@ -15,13 +17,22 @@ class Room:
         """
         self.players: Player = []
         self.players_count = 0
+        self.map = Map(20, 20)
+
+
+    def search_free_spawn(self):
+        """
+            Метод выполняет поиск свободного пространства для спавна игрока.
+        """
+
+        return (7, 7)
 
 
     def del_player(self, event):
         """
             Удаление игрока
         """
-        del_player = event.get('DelPlayer')
+        del_player = event.get('player')
 
         if not del_player:
             return
@@ -36,16 +47,19 @@ class Room:
         print('Игрока добавили')
 
         self.players_count += 1
-        new_player = Player(f'Player{self.players_count}')
-        source = event.get('socket')
+
+        # Имя игрока
+        name = f'Player{self.players_count}'
+        new_player = Player(name, self.search_free_spawn())
+        source = event.get('source')
         source.on('KEY_PRESSED', Handler(new_player.key_pressed))
+        source.on_close(Handler(self.del_player, player = new_player))
 
         self.players.append(new_player)
 
 
     def broadcast(self, event):
-        print('Вызван room.broadcast')
-        source = event.get('Server')
+        source = event.get('source')
         dt = ''
 
         for player in self.players:

@@ -3,14 +3,22 @@
     Модуль содержит класс игрока
 """
 
+from game_map import StepKeys
 from collections import deque
 
 # Максимальная длина комбинации ходов
 MAX_STEPS_QUEUE = 2
 
 
+POS_MODIF = {
+    StepKeys.UP: [0, -1],
+    StepKeys.DOWN: [0, 1],
+    StepKeys.LEFT: [-1, 0],
+    StepKeys.RIGHT: [1, 0]
+}
+
 class Player:
-    def __init__(self, name: str = None):
+    def __init__(self, name: str = None, start_pos = list):
         """
             Инициализация нового игрока
         """
@@ -23,6 +31,8 @@ class Player:
         self.steps_queue = deque(maxlen=MAX_STEPS_QUEUE)
 
         self.last_step = None
+
+        self.snake = start_pos
 
 
     def name(self) -> str:

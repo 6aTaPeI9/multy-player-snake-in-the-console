@@ -14,22 +14,25 @@ class Handler:
             raise ValueError(f'Метод {func.__name__} не принимает обязательный параметр event')
 
         self.func = func
-        self.kwargs = kwargs
+        self.event = {**kwargs}
         self.before_handler = None
         self.after_handler = None
 
 
-    def call(self):
+    def call(self, **kwargs):
         """
             Вызов обработчика
         """
-        if self.before_handler:
-            self.before_handler.call()
+        event = self.event
+        event.update(**kwargs)
 
-        self.func(**self.kwargs)
+        if self.before_handler:
+            self.before_handler.call(event)
+
+        self.func(event)
 
         if self.after_handler:
-            self.after_handler.call()
+            self.after_handler.call(event)
 
 
     def sub_handler(self, handler, before: bool):
