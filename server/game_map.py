@@ -53,9 +53,9 @@ class Map:
         for idx, _ in enumerate(self.map):
 
             if idx  == 0:
-                res += f'┌{"─" * row_len}┐\n'
+                res += f'-{"-" * row_len}-\n'
             elif idx == (self.height - 1):
-                res += f'└{"─" * row_len}┘\n'
+                res += f'-{"-" * row_len}-\n'
             else:
                 res += f'|{" " * row_len}|\n'
 

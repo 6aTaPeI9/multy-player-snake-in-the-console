@@ -4,10 +4,10 @@
 """
 
 import time
-import curses
+import os
+# import curses
 import threading
 import subprocess
-import win32gui
 from room import Room
 from wsocket.server import Server
 from wsocket.handler import Handler
@@ -19,11 +19,34 @@ def debug_window(room: Room):
         Отладочное окно с игровым полем
     """
     stinf = subprocess.STARTUPINFO()
+    stinf.wShowWindow = 5
 
-    proc = subprocess.Popen("cmd.exe", stdout=subprocess.PIPE, stdin=subprocess.PIPE, shell=True)
-    proc.
-    print('kk2')
+    proc = subprocess.Popen(
+        'cmd.exe',
+        bufsize=0,
+        cwd=os.getcwd(),
+        stdin=subprocess.PIPE,
+        creationflags=subprocess.CREATE_NEW_CONSOLE,
+        startupinfo=stinf
+    )
+    import time
+    # proc.stdin.write('python .\debug_win.py\n'.encode())
 
+    while True:
+        mp = str(room.map).split('\n')
+        res = ''
+
+        for row in mp:
+            if not row:
+                continue
+            res += f'echo "{row}" &'
+
+        res = res[:-1]
+        res += '\n'
+
+        proc.stdin.write(res.encode())
+        time.sleep(1)
+        proc.stdin.write('cls\n'.encode())
 
 if __name__ == '__main__':
     serv_sock = Server(AF_INET, SOCK_STREAM)
