@@ -3,19 +3,16 @@
     Обьект карты
 """
 
-class StepKeys:
-    UP = (38, 87)
-    DOWN = (40, 83)
-    LEFT = (37, 65)
-    RIGHT = (39, 68)
+
+from helpers.coord import Coord, Ceil
 
 
-class Ceil:
-    EMPTY = 0
-    WALL = 1
-    PLAYER = 2
-    FOOD = 3
-
+CEIL_STR_FORMAT = {
+    Ceil.EMPTY: ' ',
+    Ceil.WALL: '#',
+    Ceil.PLAYER: '*',
+    Ceil.FOOD: '+'
+}
 
 class Map:
     def __init__(self, width, height):
@@ -49,17 +46,18 @@ class Map:
             Приведем карту к читаемому виду
         """
         res = '\n'
-        row_len = (self.width - 2)
-        for idx, _ in enumerate(self.map):
+        for y in range(self.height):
+            for x in range(self.width):
+                res += CEIL_STR_FORMAT.get(self.map[y][x])
 
-            if idx  == 0:
-                res += f'-{"-" * row_len}-\n'
-            elif idx == (self.height - 1):
-                res += f'-{"-" * row_len}-\n'
-            else:
-                res += f'|{" " * row_len}|\n'
+            res += '\n'
 
+        res += '\n'
         return res
 
 
-mp = Map(50, 20)
+    def ceil(self, coord: Coord):
+        """
+            Получение клетки
+        """
+        return self.map[coord.y][coord.x]

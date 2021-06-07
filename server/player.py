@@ -3,18 +3,22 @@
     Модуль содержит класс игрока
 """
 
-from game_map import StepKeys
+from snake import Snake
 from collections import deque
+from helpers.coord import Coord
+from helpers.keys import StepKeys, STEP_KEY
+
+
 
 # Максимальная длина комбинации ходов
 MAX_STEPS_QUEUE = 2
 
-
+# Модификаторы позиции от нажатых клавиш
 POS_MODIF = {
-    StepKeys.UP: [0, -1],
-    StepKeys.DOWN: [0, 1],
-    StepKeys.LEFT: [-1, 0],
-    StepKeys.RIGHT: [1, 0]
+    StepKeys.UP: Coord(0, -1),
+    StepKeys.DOWN: Coord(0, 1),
+    StepKeys.LEFT: Coord(-1, 0),
+    StepKeys.RIGHT: Coord(1, 0)
 }
 
 class Player:
@@ -30,9 +34,11 @@ class Player:
         # например для резкого разворота.
         self.steps_queue = deque(maxlen=MAX_STEPS_QUEUE)
 
-        self.last_step = None
+        self.last_step = POS_MODIF.get(StepKeys.UP)
 
-        self.snake = start_pos
+        self.snake = Snake(start_pos)
+
+        self.dead = False
 
 
     def name(self) -> str:
@@ -58,15 +64,21 @@ class Player:
 
     def key_pressed(self, event) -> None:
         """
-            Обработчик нажатых клавиш
+            Очередь нажатых клавиш
         """
         key = event.get('data')
-        print('Сработало событие KeyPressed', key)
 
+        # Пустое событие
         if not key:
             return
 
-        self.last_step = key
+        key = STEP_KEY.get(key)
+
+        # Неизвестная клавиша
+        if not key:
+            return
+
+        self.steps_queue.append(POS_MODIF.get(key))
 
 
     def get_step(self):
@@ -76,8 +88,10 @@ class Player:
         if self.steps_queue:
             step = self.steps_queue.popleft()
             self.last_step = step
+        else:
+            step = self.last_step
 
-            return step
+        # Добавляем голову
+        head = self.snake.move_head(step)
 
-        return None
-
+        return head

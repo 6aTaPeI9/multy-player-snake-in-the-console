@@ -139,7 +139,7 @@ class Server(socket):
         loop_timeout = 100
 
         # Макс.время блокирования при чтении потока ввода
-        max_timeout = 100
+        max_timeout = 1000
 
         while True:
             # Удаляем закрытые соединения

@@ -3,11 +3,13 @@
     Инициализация сервера
 """
 
-import time
 import os
-# import curses
+import time
+import random
+import platform
 import threading
 import subprocess
+
 from room import Room
 from wsocket.server import Server
 from wsocket.handler import Handler
@@ -21,32 +23,42 @@ def debug_window(room: Room):
     stinf = subprocess.STARTUPINFO()
     stinf.wShowWindow = 5
 
+    if platform.system() == 'Windows':
+        proc_name = 'cmd.exe'
+        encoding = 'cp1252'
+        echo_tmpl = 'echo "{row}" & '
+        clear_screen = 'cls\n'
+        win_resize = 'mode con: cols={height} lines={width}\n'
+    else:
+        return
+
     proc = subprocess.Popen(
-        'cmd.exe',
+        proc_name,
         bufsize=0,
         cwd=os.getcwd(),
         stdin=subprocess.PIPE,
         creationflags=subprocess.CREATE_NEW_CONSOLE,
         startupinfo=stinf
     )
-    import time
     # proc.stdin.write('python .\debug_win.py\n'.encode())
+    hg = room.map.height
+    wd = room.map.width
+
+    proc.stdin.write(win_resize.format(height=hg + 10, width=wd + 10).encode(encoding))
 
     while True:
+        # room.map.map[random.randint(1, hg-2)][random.randint(1, wd-2)] = 2
         mp = str(room.map).split('\n')
         res = ''
-
         for row in mp:
-            if not row:
-                continue
-            res += f'echo "{row}" &'
+            res += echo_tmpl.format(row=row)
 
-        res = res[:-1]
         res += '\n'
 
-        proc.stdin.write(res.encode())
-        time.sleep(1)
-        proc.stdin.write('cls\n'.encode())
+        proc.stdin.write(res.encode(encoding))
+        time.sleep(0.1)
+        proc.stdin.write(clear_screen.encode(encoding))
+
 
 if __name__ == '__main__':
     serv_sock = Server(AF_INET, SOCK_STREAM)
@@ -54,9 +66,16 @@ if __name__ == '__main__':
     serv_sock.bind(('localhost', 5000))
     serv_sock.listen(8)
     room = Room()
+    # Добавляем событие нового подключения
     serv_sock.on_accept(Handler(room.add_player))
-    serv_sock.add_task(Handler(room.broadcast), 1000)
+
+    # Добавляем задачу на постоянную рассылки позиций игроков
+    serv_sock.add_task(Handler(room.send_positions), 300)
+
     print('Сервер запущен...')
+    # Запускаем поток с откладочным окном
     threading.Thread(target=debug_window, args=(room,)).start()
+
+    # Запускаем сервер
     serv_sock.forever()
 

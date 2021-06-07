@@ -23,7 +23,7 @@ class WSocket(socket.socket):
         """
             Инциализация сокета с частичной поддержкой
             протокола WebSocket v13
-        """
+            """
         super().__init__(*args, **kwargs)
 
         # Устанавливаем соединение в статус установки соединения.
@@ -48,7 +48,11 @@ class WSocket(socket.socket):
         """
             Обертка над методом ожидания новых данных
         """
-        recv_data = super().recv(*args, **kwargs)
+        try:
+            recv_data = super().recv(*args, **kwargs)
+        except ConnectionResetError:
+            print('Ошибка восстановления подключения')
+            self._close()
 
         # Если установлен статус подключения
         # выполняем рукопожатие
@@ -69,10 +73,12 @@ class WSocket(socket.socket):
                 return
 
             if op_code == OpCodes.OP_CLOSE:
+                print('Пришло закрытие')
                 self._close(from_client=True)
                 return
 
             try:
+                # print('Получено: ', row_data.data().get('Data'))
                 data = json.loads(row_data.data().get('Data'))
                 self._execute_handler(data[0], data=data[1])
             except Exception:
